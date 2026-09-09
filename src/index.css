@@ -1,0 +1,112 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Regras Estritas para Impressão A4 de Recibo / Orçamento */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+
+  /* Oculta toda a interface navegável, conteúdo principal de fundo, botões e controles */
+  header,
+  main,
+  nav,
+  footer,
+  button,
+  .no-print,
+  .bottom-nav {
+    display: none !important;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-size: 11pt;
+    line-height: 1.4;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Força a remoção de fundos escuros do modal backdrop e centralização */
+  .modal-backdrop {
+    position: static !important;
+    background: none !important;
+    backdrop-filter: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    display: block !important;
+    overflow: visible !important;
+  }
+
+  .modal-content {
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+    display: block !important;
+    background: #ffffff !important;
+  }
+
+  #recibo-container {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    page-break-inside: avoid;
+    color: #000000 !important;
+    background: #ffffff !important;
+  }
+
+  .recibo-tabela {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    margin-bottom: 15px;
+  }
+
+  .recibo-tabela th {
+    border: 1px solid #1e293b !important;
+    background-color: #f1f5f9 !important;
+    color: #000000 !important;
+    padding: 6px 8px;
+    font-size: 10pt;
+    font-weight: bold;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .recibo-tabela td {
+    border: 1px solid #cbd5e1 !important;
+    padding: 6px 8px;
+    font-size: 10pt;
+    color: #000000 !important;
+  }
+
+  .assinatura-area {
+    margin-top: 40px;
+    display: flex;
+    justify-content: space-between;
+    page-break-inside: avoid;
+  }
+
+  .campo-assinatura {
+    width: 44%;
+    border-top: 1.5px solid #000000;
+    text-align: center;
+    padding-top: 6px;
+    font-size: 9pt;
+  }
+}
+
+

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="grad512" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366f1" />
+      <stop offset="100%" stop-color="#4338ca" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#grad512)" />
+  
+  <!-- Prancheta / OS de Fundo -->
+  <rect x="122" y="112" width="268" height="305" rx="36" fill="#ffffff" fill-opacity="0.18" stroke="#ffffff" stroke-width="10" />
+  <rect x="192" y="86" width="128" height="48" rx="16" fill="#ffffff" />
+  
+  <!-- Linhas de detalhes da OS -->
+  <line x1="165" y1="202" x2="347" y2="202" stroke="#ffffff" stroke-width="14" stroke-linecap="round" stroke-opacity="0.6" />
+  <line x1="165" y1="256" x2="307" y2="256" stroke="#ffffff" stroke-width="14" stroke-linecap="round" stroke-opacity="0.6" />
+  <line x1="165" y1="310" x2="267" y2="310" stroke="#ffffff" stroke-width="14" stroke-linecap="round" stroke-opacity="0.6" />
+
+  <!-- Chave inglesa cruzada em destaque -->
+  <g transform="translate(26, 26) scale(2.66)">
+    <path d="M125.8 114.2l-38.3-38.3c1.7-4.8 1.1-10.4-2.1-14.8-4.7-6.5-13.8-7.9-20.3-3.2-1.9 1.4-3.4 3.3-4.5 5.5l11.4 11.4-6.3 6.3-11.4-11.4c-2.2 1.1-4.1 2.6-5.5 4.5-4.7 6.5-3.3 15.6 3.2 20.3 4.4 3.2 10 3.8 14.8 2.1l38.3 38.3c2.9 2.9 7.7 2.9 10.6 0l10.1-10.1c3-3 3-7.7.1-10.7z" fill="#ffffff" />
+  </g>
+</svg>
