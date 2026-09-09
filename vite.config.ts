@@ -8,7 +8,7 @@ export default defineConfig({
     host: true,
     port: 5173,
   },
-  base: './',
+  base: '/oficio-facil/',
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
