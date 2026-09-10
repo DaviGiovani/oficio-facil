@@ -73,6 +73,27 @@ export interface DadosEmpresa {
   parametrosHora?: ParametrosHoraTecnica; // Parâmetros detalhados da calculadora
 }
 
+export type UnidadeMedida = 'un' | 'm' | 'kg' | 'l' | 'par' | 'pacote' | 'outro';
+
+export interface ServicoCatalogo {
+  id: string; // UUID v4
+  nome: string;
+  descricao?: string;
+  horasEstimadas: number;
+  valorSugerido: number;
+  criadoEm: string;
+}
+
+export interface PecaCatalogo {
+  id: string; // UUID v4
+  nome: string;
+  codigo?: string;
+  unidade: UnidadeMedida;
+  precoCusto: number;
+  precoVenda: number;
+  criadoEm: string;
+}
+
 export interface DatabaseBackup {
   versao: string;
   dataExportacao: string;
@@ -80,6 +101,9 @@ export interface DatabaseBackup {
     clientes: Cliente[];
     ordens: OrdemServico[];
     itens: ItemServico[];
+    servicosCatalogo?: ServicoCatalogo[];
+    pecasCatalogo?: PecaCatalogo[];
   };
   empresa?: DadosEmpresa;
 }
+

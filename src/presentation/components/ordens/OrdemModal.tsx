@@ -1,8 +1,17 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../../../application/AppContext';
-import { StatusOrdem } from '../../../domain/types';
+import { StatusOrdem, ServicoCatalogo, PecaCatalogo } from '../../../domain/types';
 import { PricingEngine } from '../../../domain/pricing';
-import { formatarMoeda } from '../../utils/formatters';
+import {
+  formatarMoeda,
+  aplicarMascaraMoeda,
+  converterMoedaParaNumero,
+  aplicarMascaraHora,
+  normalizarHoraInput,
+  converterHoraParaDecimal,
+  formatarHorasParaInput,
+  formatarHorasExibicao,
+} from '../../utils/formatters';
 import {
   X,
   FilePlus,
@@ -15,6 +24,7 @@ import {
   Package,
   AlertCircle,
   Sparkles,
+  Search,
 } from 'lucide-react';
 import { CalculadoraHoraModal } from '../calculadora/CalculadoraHoraModal';
 
@@ -22,7 +32,7 @@ interface ItemForm {
   idTemp: string;
   descricao: string;
   quantidade: number | string;
-  valorUnitario: number | string;
+  valorUnitario: string;
 }
 
 export const OrdemModal: React.FC = () => {
@@ -38,10 +48,18 @@ export const OrdemModal: React.FC = () => {
     setIsClienteModalOpen,
     setClienteParaEditar,
     dadosEmpresa,
+    servicosCatalogo,
+    pecasCatalogo,
   } = useApp();
 
   // Controle do Modal de Calculadora de Custo Hora
   const [isCalculadoraAberta, setIsCalculadoraAberta] = useState(false);
+
+  // Seletores Rápidos do Catálogo
+  const [isSeletorServicoAberto, setIsSeletorServicoAberto] = useState(false);
+  const [buscaServicoCatalogo, setBuscaServicoCatalogo] = useState('');
+  const [isSeletorPecaAberto, setIsSeletorPecaAberto] = useState(false);
+  const [buscaPecaCatalogo, setBuscaPecaCatalogo] = useState('');
 
   // Campos do Formulário
   const [clienteId, setClienteId] = useState('');
@@ -50,14 +68,39 @@ export const OrdemModal: React.FC = () => {
   const [status, setStatus] = useState<StatusOrdem>('orcamento');
   const [prazoEntrega, setPrazoEntrega] = useState('');
 
-  // Parâmetros de Precificação (permite string para não forçar 0 ao apagar)
-  const [valorHoraTecnica, setValorHoraTecnica] = useState<number | string>(60);
-  const [horasEstimadas, setHorasEstimadas] = useState<number | string>(2);
+  // Parâmetros de Precificação formatados com máscaras
+  const [valorHoraTecnica, setValorHoraTecnica] = useState<string>('60,00');
+  const [horasEstimadas, setHorasEstimadas] = useState<string>('02:00');
   const [margemLucroPercentual, setMargemLucroPercentual] = useState<number | string>(25);
 
   // Lista de Peças/Materiais
   const [listaItens, setListaItens] = useState<ItemForm[]>([]);
   const [erro, setErro] = useState<string | null>(null);
+
+  const handleSelecionarServicoCatalogo = (servico: ServicoCatalogo) => {
+    setTituloServico(servico.nome);
+    if (servico.descricao) {
+      setDescricaoDefeito(servico.descricao);
+    }
+    setHorasEstimadas(formatarHorasParaInput(servico.horasEstimadas));
+    setIsSeletorServicoAberto(false);
+    setBuscaServicoCatalogo('');
+  };
+
+  const handleSelecionarPecaCatalogo = (peca: PecaCatalogo) => {
+    const rotuloUnidade = peca.unidade !== 'un' ? ` (${peca.unidade})` : '';
+    setListaItens((prev) => [
+      ...prev,
+      {
+        idTemp: String(Date.now() + Math.random()),
+        descricao: `${peca.nome}${rotuloUnidade}`,
+        quantidade: 1,
+        valorUnitario: aplicarMascaraMoeda(peca.precoVenda),
+      },
+    ]);
+    setIsSeletorPecaAberto(false);
+    setBuscaPecaCatalogo('');
+  };
 
   // Inicialização e Carregamento de dados para edição
   useEffect(() => {
@@ -67,8 +110,8 @@ export const OrdemModal: React.FC = () => {
       setDescricaoDefeito(ordemParaEditar.descricaoDefeito);
       setStatus(ordemParaEditar.status);
       setPrazoEntrega(ordemParaEditar.prazoEntrega.split('T')[0]);
-      setValorHoraTecnica(ordemParaEditar.valorHoraTecnica);
-      setHorasEstimadas(ordemParaEditar.horasEstimadas);
+      setValorHoraTecnica(aplicarMascaraMoeda(ordemParaEditar.valorHoraTecnica));
+      setHorasEstimadas(formatarHorasParaInput(ordemParaEditar.horasEstimadas));
       setMargemLucroPercentual(ordemParaEditar.margemLucroPercentual);
 
       // Carrega os itens da ordem existente
@@ -78,7 +121,7 @@ export const OrdemModal: React.FC = () => {
           idTemp: i.id,
           descricao: i.descricao,
           quantidade: i.quantidade,
-          valorUnitario: i.valorUnitario,
+          valorUnitario: aplicarMascaraMoeda(i.valorUnitario),
         }))
       );
     } else {
@@ -93,8 +136,8 @@ export const OrdemModal: React.FC = () => {
       dataPrazo.setDate(dataPrazo.getDate() + 5);
       setPrazoEntrega(dataPrazo.toISOString().split('T')[0]);
 
-      setValorHoraTecnica(dadosEmpresa.valorHoraPadrao || 65);
-      setHorasEstimadas(2);
+      setValorHoraTecnica(aplicarMascaraMoeda(dadosEmpresa.valorHoraPadrao || 65));
+      setHorasEstimadas('02:00');
       setMargemLucroPercentual(25);
       setListaItens([]);
     }
@@ -107,11 +150,11 @@ export const OrdemModal: React.FC = () => {
       .filter((i) => i.descricao.trim().length > 0)
       .map((i) => ({
         quantidade: Math.max(0, Number(i.quantidade) || 0),
-        valorUnitario: Math.max(0, Number(i.valorUnitario) || 0),
+        valorUnitario: converterMoedaParaNumero(i.valorUnitario),
       }));
 
-    const h = Math.max(0, Number(horasEstimadas) || 0);
-    const vh = Math.max(0, Number(valorHoraTecnica) || 0);
+    const h = converterHoraParaDecimal(horasEstimadas);
+    const vh = converterMoedaParaNumero(valorHoraTecnica);
     const m = Math.max(0, Number(margemLucroPercentual) || 0);
 
     return PricingEngine.calcularPrecoFinal(itensValidos, h, vh, m);
@@ -137,10 +180,18 @@ export const OrdemModal: React.FC = () => {
   };
 
   const handleAtualizarItem = (idTemp: string, campo: keyof ItemForm, valor: any) => {
+    let valorFinal = valor;
+    if (campo === 'quantidade' && valor !== '') {
+      const num = Number(valor);
+      if (!isNaN(num) && num > 999) {
+        valorFinal = 999;
+      }
+    }
+
     setListaItens(
       listaItens.map((item) => {
         if (item.idTemp === idTemp) {
-          return { ...item, [campo]: valor };
+          return { ...item, [campo]: valorFinal };
         }
         return item;
       })
@@ -176,8 +227,12 @@ export const OrdemModal: React.FC = () => {
       .map((i) => ({
         descricao: i.descricao.trim(),
         quantidade: Math.max(0.1, Number(i.quantidade) || 1),
-        valorUnitario: Math.max(0, Number(i.valorUnitario) || 0),
+        valorUnitario: converterMoedaParaNumero(i.valorUnitario),
       }));
+
+    const vhNum = converterMoedaParaNumero(valorHoraTecnica);
+    const hNum = converterHoraParaDecimal(horasEstimadas);
+    const mNum = Math.max(0, Number(margemLucroPercentual) || 0);
 
     if (ordemParaEditar) {
       atualizarOrdem(ordemParaEditar.id, {
@@ -185,9 +240,9 @@ export const OrdemModal: React.FC = () => {
         tituloServico,
         descricaoDefeito,
         status,
-        valorHoraTecnica: Math.max(0, Number(valorHoraTecnica) || 0),
-        horasEstimadas: Math.max(0, Number(horasEstimadas) || 0),
-        margemLucroPercentual: Math.max(0, Number(margemLucroPercentual) || 0),
+        valorHoraTecnica: vhNum,
+        horasEstimadas: hNum,
+        margemLucroPercentual: mNum,
         prazoEntrega,
         itens: itensParaSalvar,
       });
@@ -197,9 +252,9 @@ export const OrdemModal: React.FC = () => {
         tituloServico,
         descricaoDefeito,
         status,
-        valorHoraTecnica: Math.max(0, Number(valorHoraTecnica) || 0),
-        horasEstimadas: Math.max(0, Number(horasEstimadas) || 0),
-        margemLucroPercentual: Math.max(0, Number(margemLucroPercentual) || 0),
+        valorHoraTecnica: vhNum,
+        horasEstimadas: hNum,
+        margemLucroPercentual: mNum,
         prazoEntrega,
         itens: itensParaSalvar,
       });
@@ -295,9 +350,22 @@ export const OrdemModal: React.FC = () => {
           <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="sm:col-span-2">
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Título do Serviço <span className="text-red-500">*</span>
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Título do Serviço <span className="text-red-500">*</span>
+                  </label>
+                  {servicosCatalogo.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setIsSeletorServicoAberto(true)}
+                      className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 flex items-center gap-1.5 transition-colors"
+                      title="Preencher dados a partir do catálogo"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+                      Do Catálogo
+                    </button>
+                  )}
+                </div>
                 <input
                   type="text"
                   required
@@ -345,14 +413,28 @@ export const OrdemModal: React.FC = () => {
                   Peças e Materiais Utilizados
                 </h3>
               </div>
-              <button
-                type="button"
-                onClick={handleAdicionarItem}
-                className="flex items-center gap-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 px-3 py-1.5 rounded-lg transition-colors"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                Adicionar Peça / Insumo
-              </button>
+              <div className="flex items-center gap-2">
+                {pecasCatalogo.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setIsSeletorPecaAberto(true)}
+                    className="flex items-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/60 bg-amber-50 dark:bg-amber-950/60 px-3 py-1.5 rounded-lg border border-amber-200 dark:border-amber-800/60 transition-colors shadow-2xs"
+                    title="Adicionar peça a partir do catálogo"
+                  >
+                    <Package className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                    Do Catálogo
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleAdicionarItem}
+                  className="flex items-center gap-1.5 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 px-3 py-1.5 rounded-lg transition-colors border border-indigo-200 dark:border-indigo-800/60 shadow-2xs"
+                  title="Adicionar peça manualmente"
+                >
+                  <Plus className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                  Manual
+                </button>
+              </div>
             </div>
 
             {listaItens.length === 0 ? (
@@ -362,7 +444,8 @@ export const OrdemModal: React.FC = () => {
             ) : (
               <div className="space-y-2">
                 {listaItens.map((item) => {
-                  const subtotalItem = (Number(item.quantidade) || 0) * (Number(item.valorUnitario) || 0);
+                  const subtotalItem =
+                    (Number(item.quantidade) || 0) * converterMoedaParaNumero(item.valorUnitario);
 
                   return (
                     <div
@@ -384,6 +467,7 @@ export const OrdemModal: React.FC = () => {
                           <input
                             type="number"
                             min="0.1"
+                            max="999"
                             step="any"
                             placeholder="Qtd"
                             value={item.quantidade}
@@ -394,17 +478,23 @@ export const OrdemModal: React.FC = () => {
                           />
                         </div>
 
-                        <div className="w-24">
+                        <div className="w-28 relative">
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 dark:text-slate-500 font-medium">
+                            R$
+                          </span>
                           <input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            placeholder="R$"
+                            type="text"
+                            inputMode="numeric"
+                            placeholder="0,00"
                             value={item.valorUnitario}
                             onChange={(e) =>
-                              handleAtualizarItem(item.idTemp, 'valorUnitario', e.target.value)
+                              handleAtualizarItem(
+                                item.idTemp,
+                                'valorUnitario',
+                                aplicarMascaraMoeda(e.target.value)
+                              )
                             }
-                            className="w-full px-2 py-1.5 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-right focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
+                            className="w-full pl-7 pr-2 py-1.5 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-right focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
                           />
                         </div>
 
@@ -443,15 +533,16 @@ export const OrdemModal: React.FC = () => {
                 </label>
                 <div className="relative">
                   <input
-                    type="number"
-                    min="0"
-                    step="0.25"
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="02:00"
                     value={horasEstimadas}
-                    onChange={(e) => setHorasEstimadas(e.target.value)}
-                    className="w-full pl-3 pr-8 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-hidden bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                    onChange={(e) => setHorasEstimadas(aplicarMascaraHora(e.target.value))}
+                    onBlur={() => setHorasEstimadas((prev) => normalizarHoraInput(prev))}
+                    className="w-full pl-3 pr-14 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-hidden bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 dark:text-slate-500 font-medium">
-                    hrs
+                    HH:mm
                   </span>
                 </div>
               </div>
@@ -476,11 +567,11 @@ export const OrdemModal: React.FC = () => {
                     R$
                   </span>
                   <input
-                    type="number"
-                    min="0"
-                    step="1"
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="0,00"
                     value={valorHoraTecnica}
-                    onChange={(e) => setValorHoraTecnica(e.target.value)}
+                    onChange={(e) => setValorHoraTecnica(aplicarMascaraMoeda(e.target.value))}
                     className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-hidden bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
                   />
                 </div>
@@ -495,8 +586,19 @@ export const OrdemModal: React.FC = () => {
                     type="number"
                     min="0"
                     step="1"
+                    placeholder="25"
                     value={margemLucroPercentual}
-                    onChange={(e) => setMargemLucroPercentual(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === '' || /^\d+$/.test(val)) {
+                        setMargemLucroPercentual(val === '' ? '' : Math.min(1000, parseInt(val, 10)));
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === '.' || e.key === ',') {
+                        e.preventDefault();
+                      }
+                    }}
                     className="w-full pl-3 pr-8 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-hidden bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 dark:text-slate-500 font-medium">
@@ -584,8 +686,169 @@ export const OrdemModal: React.FC = () => {
       <CalculadoraHoraModal
         isOpen={isCalculadoraAberta}
         onClose={() => setIsCalculadoraAberta(false)}
-        onApplyRate={(novaTaxa) => setValorHoraTecnica(novaTaxa)}
+        onApplyRate={(novaTaxa) => setValorHoraTecnica(aplicarMascaraMoeda(novaTaxa))}
       />
+
+      {/* Modal / Popover: Selecionar Serviço do Catálogo */}
+      {isSeletorServicoAberto && (
+        <div className="fixed inset-0 z-60 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                  Escolher Serviço do Catálogo
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSeletorServicoAberto(false);
+                  setBuscaServicoCatalogo('');
+                }}
+                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-4 border-b border-slate-100 dark:border-slate-800">
+              <div className="relative">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Buscar serviço..."
+                  value={buscaServicoCatalogo}
+                  onChange={(e) => setBuscaServicoCatalogo(e.target.value)}
+                  className="w-full pl-9 pr-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+            </div>
+
+            <div className="max-h-72 overflow-y-auto p-3 space-y-2">
+              {servicosCatalogo
+                .filter(
+                  (s) =>
+                    !buscaServicoCatalogo ||
+                    s.nome.toLowerCase().includes(buscaServicoCatalogo.toLowerCase()) ||
+                    (s.descricao && s.descricao.toLowerCase().includes(buscaServicoCatalogo.toLowerCase()))
+                )
+                .map((servico) => (
+                  <button
+                    key={servico.id}
+                    type="button"
+                    onClick={() => handleSelecionarServicoCatalogo(servico)}
+                    className="w-full text-left p-3 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-indigo-400 dark:hover:border-indigo-500 bg-white dark:bg-slate-800/80 hover:bg-indigo-50/40 dark:hover:bg-indigo-950/30 transition-all flex items-start justify-between gap-3 group"
+                  >
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
+                        {servico.nome}
+                      </h4>
+                      {servico.descricao && (
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 mt-0.5">
+                          {servico.descricao}
+                        </p>
+                      )}
+                      <div className="flex items-center gap-2 mt-1.5 text-[10px] text-slate-400">
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {formatarHorasExibicao(servico.horasEstimadas)}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className="text-xs font-bold text-slate-900 dark:text-white block">
+                        {formatarMoeda(servico.valorSugerido)}
+                      </span>
+                      <span className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400">
+                        Selecionar
+                      </span>
+                    </div>
+                  </button>
+                ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal / Popover: Selecionar Peça do Catálogo */}
+      {isSeletorPecaAberto && (
+        <div className="fixed inset-0 z-60 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60">
+              <div className="flex items-center gap-2">
+                <Package className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                  Inserir Peça / Material do Catálogo
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSeletorPecaAberto(false);
+                  setBuscaPecaCatalogo('');
+                }}
+                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-4 border-b border-slate-100 dark:border-slate-800">
+              <div className="relative">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Buscar peça ou código..."
+                  value={buscaPecaCatalogo}
+                  onChange={(e) => setBuscaPecaCatalogo(e.target.value)}
+                  className="w-full pl-9 pr-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-amber-500"
+                />
+              </div>
+            </div>
+
+            <div className="max-h-72 overflow-y-auto p-3 space-y-2">
+              {pecasCatalogo
+                .filter(
+                  (p) =>
+                    !buscaPecaCatalogo ||
+                    p.nome.toLowerCase().includes(buscaPecaCatalogo.toLowerCase()) ||
+                    (p.codigo && p.codigo.toLowerCase().includes(buscaPecaCatalogo.toLowerCase()))
+                )
+                .map((peca) => (
+                  <button
+                    key={peca.id}
+                    type="button"
+                    onClick={() => handleSelecionarPecaCatalogo(peca)}
+                    className="w-full text-left p-3 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-amber-400 dark:hover:border-amber-500 bg-white dark:bg-slate-800/80 hover:bg-amber-50/40 dark:hover:bg-amber-950/30 transition-all flex items-center justify-between gap-3 group"
+                  >
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400">
+                        {peca.nome}
+                      </h4>
+                      <div className="flex items-center gap-1.5 mt-1 text-[10px] text-slate-400">
+                        <span className="uppercase font-semibold px-1.5 py-0.5 rounded-sm bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                          {peca.unidade}
+                        </span>
+                        {peca.codigo && (
+                          <span className="font-mono text-slate-500">Ref: {peca.codigo}</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className="text-xs font-bold text-slate-900 dark:text-white block">
+                        {formatarMoeda(peca.precoVenda)}
+                      </span>
+                      <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400">
+                        + Adicionar
+                      </span>
+                    </div>
+                  </button>
+                ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

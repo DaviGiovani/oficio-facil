@@ -1,7 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../../application/AppContext';
 import { DadosEmpresa } from '../../../domain/types';
-import { aplicarMascaraTelefone, aplicarMascaraDocumento, formatarMoeda } from '../../utils/formatters';
+import {
+  aplicarMascaraTelefone,
+  aplicarMascaraDocumento,
+  formatarMoeda,
+  aplicarMascaraMoeda,
+  converterMoedaParaNumero,
+} from '../../utils/formatters';
 import {
   Building2,
   Save,
@@ -22,6 +28,9 @@ export const EmpresaView: React.FC = () => {
   const { dadosEmpresa, atualizarDadosEmpresa } = useApp();
 
   const [form, setForm] = useState<DadosEmpresa>(dadosEmpresa);
+  const [valorHoraInput, setValorHoraInput] = useState(() =>
+    aplicarMascaraMoeda(dadosEmpresa.valorHoraPadrao || '')
+  );
   const [salvoComSucesso, setSalvoComSucesso] = useState(false);
   const [isCalculadoraAberta, setIsCalculadoraAberta] = useState(false);
 
@@ -31,6 +40,7 @@ export const EmpresaView: React.FC = () => {
       telefone: aplicarMascaraTelefone(dadosEmpresa.telefone),
       documento: aplicarMascaraDocumento(dadosEmpresa.documento || ''),
     });
+    setValorHoraInput(aplicarMascaraMoeda(dadosEmpresa.valorHoraPadrao || ''));
   }, [dadosEmpresa]);
 
   const handleChange = (campo: keyof DadosEmpresa, valor: string) => {
@@ -225,16 +235,18 @@ export const EmpresaView: React.FC = () => {
                   R$
                 </span>
                 <input
-                  type="number"
-                  min="0"
-                  step="1"
-                  value={form.valorHoraPadrao ?? ''}
-                  onChange={(e) =>
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="0,00"
+                  value={valorHoraInput}
+                  onChange={(e) => {
+                    const masked = aplicarMascaraMoeda(e.target.value);
+                    setValorHoraInput(masked);
                     setForm((prev) => ({
                       ...prev,
-                      valorHoraPadrao: e.target.value === '' ? ('' as any) : parseFloat(e.target.value) || 0,
-                    }))
-                  }
+                      valorHoraPadrao: converterMoedaParaNumero(masked),
+                    }));
+                  }}
                   className="w-full pl-9 pr-8 py-1.5 text-sm font-bold text-indigo-900 dark:text-indigo-300 border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-hidden bg-white dark:bg-slate-900"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-medium">

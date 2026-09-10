@@ -1,8 +1,16 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
-import { Cliente, OrdemServico, ItemServico, StatusOrdem, DadosEmpresa } from '../domain/types';
+import {
+  Cliente,
+  OrdemServico,
+  ItemServico,
+  StatusOrdem,
+  DadosEmpresa,
+  ServicoCatalogo,
+  PecaCatalogo,
+  UnidadeMedida,
+} from '../domain/types';
 import { PricingEngine } from '../domain/pricing';
 import { databaseService, DADOS_EMPRESA_PADRAO } from '../infrastructure/databaseService';
-import { inicializarDadosDemonstrativos } from '../infrastructure/seed';
 
 export function generateUUID(): string {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -15,7 +23,7 @@ export function generateUUID(): string {
   });
 }
 
-export type AbaNavegacao = 'kanban' | 'clientes' | 'relatorios' | 'empresa' | 'configuracoes';
+export type AbaNavegacao = 'kanban' | 'clientes' | 'catalogo' | 'relatorios' | 'empresa' | 'configuracoes';
 
 export interface DialogConfirmacaoConfig {
   titulo: string;
@@ -34,6 +42,21 @@ export interface NovoClienteInput {
   telefone: string;
   documento?: string;
   endereco?: string;
+}
+
+export interface NovoServicoCatalogoInput {
+  nome: string;
+  descricao?: string;
+  horasEstimadas: number;
+  valorSugerido: number;
+}
+
+export interface NovaPecaCatalogoInput {
+  nome: string;
+  codigo?: string;
+  unidade: UnidadeMedida;
+  precoCusto: number;
+  precoVenda: number;
 }
 
 export interface NovaOrdemInput {
@@ -101,8 +124,28 @@ interface AppContextData {
   atualizarStatusOrdem: (id: string, novoStatus: StatusOrdem) => void;
   removerOrdem: (id: string) => void;
 
+  // Catálogo
+  servicosCatalogo: ServicoCatalogo[];
+  pecasCatalogo: PecaCatalogo[];
+  isServicoModalOpen: boolean;
+  setIsServicoModalOpen: (aberto: boolean) => void;
+  servicoParaEditar: ServicoCatalogo | null;
+  setServicoParaEditar: (servico: ServicoCatalogo | null) => void;
+
+  isPecaModalOpen: boolean;
+  setIsPecaModalOpen: (aberto: boolean) => void;
+  pecaParaEditar: PecaCatalogo | null;
+  setPecaParaEditar: (peca: PecaCatalogo | null) => void;
+
+  criarServicoCatalogo: (dados: NovoServicoCatalogoInput) => ServicoCatalogo;
+  atualizarServicoCatalogo: (id: string, dados: Partial<NovoServicoCatalogoInput>) => void;
+  removerServicoCatalogo: (id: string) => void;
+
+  criarPecaCatalogo: (dados: NovaPecaCatalogoInput) => PecaCatalogo;
+  atualizarPecaCatalogo: (id: string, dados: Partial<NovaPecaCatalogoInput>) => void;
+  removerPecaCatalogo: (id: string) => void;
+
   recarregarDados: () => void;
-  restaurarSeed: () => void;
 
   // Métricas
   totalOrdensAtivas: number;
@@ -128,6 +171,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [ordemSelecionadaParaRecibo, setOrdemSelecionadaParaRecibo] = useState<OrdemServico | null>(null);
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
   const [dadosEmpresa, setDadosEmpresa] = useState<DadosEmpresa>(DADOS_EMPRESA_PADRAO);
+
+  // Catálogo (Serviços e Peças/Materiais)
+  const [servicosCatalogo, setServicosCatalogo] = useState<ServicoCatalogo[]>([]);
+  const [pecasCatalogo, setPecasCatalogo] = useState<PecaCatalogo[]>([]);
+  const [isServicoModalOpen, setIsServicoModalOpen] = useState(false);
+  const [servicoParaEditar, setServicoParaEditar] = useState<ServicoCatalogo | null>(null);
+  const [isPecaModalOpen, setIsPecaModalOpen] = useState(false);
+  const [pecaParaEditar, setPecaParaEditar] = useState<PecaCatalogo | null>(null);
 
   // Confirmação Global do Sistema
   const [dialogConfirmacao, setDialogConfirmacao] = useState<DialogConfirmacaoConfig | null>(null);
@@ -189,6 +240,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setOrdens(databaseService.getOrdens());
     setItens(databaseService.getItens());
     setDadosEmpresa(databaseService.getDadosEmpresa());
+    setServicosCatalogo(databaseService.getServicosCatalogo());
+    setPecasCatalogo(databaseService.getPecasCatalogo());
   };
 
   const atualizarDadosEmpresa = (novosDados: DadosEmpresa) => {
@@ -196,15 +249,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setDadosEmpresa(novosDados);
   };
 
-  const restaurarSeed = () => {
-    databaseService.limparBanco();
-    inicializarDadosDemonstrativos();
-    recarregarDados();
-  };
-
   useEffect(() => {
-    // Se o banco estiver vazio, carrega semente demonstrativa de Londrina
-    inicializarDadosDemonstrativos();
     recarregarDados();
   }, []);
 
@@ -337,6 +382,75 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     recarregarDados();
   };
 
+  // Operações de Catálogo (Serviços e Peças)
+  const criarServicoCatalogo = (dados: NovoServicoCatalogoInput): ServicoCatalogo => {
+    const novo: ServicoCatalogo = {
+      id: generateUUID(),
+      nome: dados.nome.trim(),
+      descricao: dados.descricao?.trim() || undefined,
+      horasEstimadas: Math.max(0, Number(dados.horasEstimadas) || 0),
+      valorSugerido: Math.max(0, Number(dados.valorSugerido) || 0),
+      criadoEm: new Date().toISOString(),
+    };
+    databaseService.salvarServicoCatalogo(novo);
+    recarregarDados();
+    return novo;
+  };
+
+  const atualizarServicoCatalogo = (id: string, dados: Partial<NovoServicoCatalogoInput>) => {
+    const atual = databaseService.getServicoCatalogoById(id);
+    if (!atual) return;
+    const atualizado: ServicoCatalogo = {
+      ...atual,
+      nome: dados.nome !== undefined ? dados.nome.trim() : atual.nome,
+      descricao: dados.descricao !== undefined ? dados.descricao.trim() || undefined : atual.descricao,
+      horasEstimadas: dados.horasEstimadas !== undefined ? Math.max(0, Number(dados.horasEstimadas) || 0) : atual.horasEstimadas,
+      valorSugerido: dados.valorSugerido !== undefined ? Math.max(0, Number(dados.valorSugerido) || 0) : atual.valorSugerido,
+    };
+    databaseService.salvarServicoCatalogo(atualizado);
+    recarregarDados();
+  };
+
+  const removerServicoCatalogo = (id: string) => {
+    databaseService.excluirServicoCatalogo(id);
+    recarregarDados();
+  };
+
+  const criarPecaCatalogo = (dados: NovaPecaCatalogoInput): PecaCatalogo => {
+    const nova: PecaCatalogo = {
+      id: generateUUID(),
+      nome: dados.nome.trim(),
+      codigo: dados.codigo?.trim() || undefined,
+      unidade: dados.unidade || 'un',
+      precoCusto: Math.max(0, Number(dados.precoCusto) || 0),
+      precoVenda: Math.max(0, Number(dados.precoVenda) || 0),
+      criadoEm: new Date().toISOString(),
+    };
+    databaseService.salvarPecaCatalogo(nova);
+    recarregarDados();
+    return nova;
+  };
+
+  const atualizarPecaCatalogo = (id: string, dados: Partial<NovaPecaCatalogoInput>) => {
+    const atual = databaseService.getPecaCatalogoById(id);
+    if (!atual) return;
+    const atualizada: PecaCatalogo = {
+      ...atual,
+      nome: dados.nome !== undefined ? dados.nome.trim() : atual.nome,
+      codigo: dados.codigo !== undefined ? dados.codigo.trim() || undefined : atual.codigo,
+      unidade: dados.unidade !== undefined ? dados.unidade : atual.unidade,
+      precoCusto: dados.precoCusto !== undefined ? Math.max(0, Number(dados.precoCusto) || 0) : atual.precoCusto,
+      precoVenda: dados.precoVenda !== undefined ? Math.max(0, Number(dados.precoVenda) || 0) : atual.precoVenda,
+    };
+    databaseService.salvarPecaCatalogo(atualizada);
+    recarregarDados();
+  };
+
+  const removerPecaCatalogo = (id: string) => {
+    databaseService.excluirPecaCatalogo(id);
+    recarregarDados();
+  };
+
   // Métricas Consolidadas
   const totalOrdensAtivas = useMemo(() => {
     return ordens.filter((o) =>
@@ -392,8 +506,23 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         atualizarOrdem,
         atualizarStatusOrdem,
         removerOrdem,
+        servicosCatalogo,
+        pecasCatalogo,
+        isServicoModalOpen,
+        setIsServicoModalOpen,
+        servicoParaEditar,
+        setServicoParaEditar,
+        isPecaModalOpen,
+        setIsPecaModalOpen,
+        pecaParaEditar,
+        setPecaParaEditar,
+        criarServicoCatalogo,
+        atualizarServicoCatalogo,
+        removerServicoCatalogo,
+        criarPecaCatalogo,
+        atualizarPecaCatalogo,
+        removerPecaCatalogo,
         recarregarDados,
-        restaurarSeed,
         totalOrdensAtivas,
         faturamentoConcluido,
         ticketMedio,

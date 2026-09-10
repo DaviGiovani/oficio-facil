@@ -47,19 +47,22 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({ ordem }) => {
   const podeAvancar = indiceAtual !== -1 && indiceAtual < FLUXO_STATUS.length - 1;
   const podeVoltar = indiceAtual > 0;
 
-  const handleAvancar = () => {
+  const handleAvancar = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (podeAvancar) {
       atualizarStatusOrdem(ordem.id, FLUXO_STATUS[indiceAtual + 1]);
     }
   };
 
-  const handleVoltar = () => {
+  const handleVoltar = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (podeVoltar) {
       atualizarStatusOrdem(ordem.id, FLUXO_STATUS[indiceAtual - 1]);
     }
   };
 
-  const handleCancelar = () => {
+  const handleCancelar = (e: React.MouseEvent) => {
+    e.stopPropagation();
     confirmarAcao({
       titulo: `Cancelar OS #${ordem.numeroOs}`,
       mensagem: `Deseja marcar a OS #${ordem.numeroOs} como Cancelada?`,
@@ -70,11 +73,13 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({ ordem }) => {
     });
   };
 
-  const handleReabrir = () => {
+  const handleReabrir = (e: React.MouseEvent) => {
+    e.stopPropagation();
     atualizarStatusOrdem(ordem.id, 'orcamento');
   };
 
-  const handleExcluir = () => {
+  const handleExcluir = (e: React.MouseEvent) => {
+    e.stopPropagation();
     confirmarAcao({
       titulo: `Excluir OS #${ordem.numeroOs}`,
       mensagem: `Tem certeza que deseja excluir permanentemente a OS #${ordem.numeroOs}?`,
@@ -85,16 +90,19 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({ ordem }) => {
     });
   };
 
-  const handleEditar = () => {
+  const handleEditar = (e: React.MouseEvent) => {
+    e.stopPropagation();
     setOrdemParaEditar(ordem);
     setIsOrdemModalOpen(true);
   };
 
-  const handleImprimir = () => {
+  const handleImprimir = (e: React.MouseEvent) => {
+    e.stopPropagation();
     setOrdemSelecionadaParaRecibo(ordem);
   };
 
-  const handleWhatsApp = () => {
+  const handleWhatsApp = (e: React.MouseEvent) => {
+    e.stopPropagation();
     const itensDaOrdem = itens.filter((i) => i.ordemId === ordem.id);
     const mensagem = gerarMensagemOrdemWhatsApp({
       ordem,
@@ -106,7 +114,10 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({ ordem }) => {
   };
 
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-3.5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between gap-3 group overflow-hidden">
+    <div
+      onClick={() => setOrdemSelecionadaParaRecibo(ordem)}
+      className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-3.5 shadow-xs hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-600 transition-all flex flex-col justify-between gap-3 group overflow-hidden cursor-pointer"
+    >
       <div>
         {/* Cabeçalho do Card */}
         <div className="flex items-center justify-between gap-2 min-w-0">
@@ -114,13 +125,15 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({ ordem }) => {
             #{ordem.numeroOs}
           </span>
 
-          {/* Indicador de Prazo (Sempre fininho e com altura uniforme) */}
-          <div
-            className={`flex items-center gap-1 text-[10.5px] font-semibold px-2 py-0.5 rounded-full border whitespace-nowrap shrink-0 leading-tight ${infoPrazo.classeCor}`}
-          >
-            <Clock className="w-3 h-3 shrink-0" />
-            <span>{infoPrazo.texto}</span>
-          </div>
+          {/* Indicador de Prazo (Apenas para ordens ativas em orçamento, aprovadas ou em andamento) */}
+          {ordem.status !== 'concluido' && ordem.status !== 'cancelado' && (
+            <div
+              className={`flex items-center gap-1 text-[10.5px] font-semibold px-2 py-0.5 rounded-full border whitespace-nowrap shrink-0 leading-tight ${infoPrazo.classeCor}`}
+            >
+              <Clock className="w-3 h-3 shrink-0" />
+              <span>{infoPrazo.texto}</span>
+            </div>
+          )}
         </div>
 
         {/* Cliente e Título */}
@@ -130,7 +143,7 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({ ordem }) => {
             <span className="truncate">{cliente?.nome || 'Cliente não identificado'}</span>
           </div>
 
-          <h4 className="font-bold text-slate-900 dark:text-white text-sm leading-snug line-clamp-2">
+          <h4 className="font-bold text-slate-900 dark:text-white text-sm leading-snug line-clamp-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
             {ordem.tituloServico}
           </h4>
 

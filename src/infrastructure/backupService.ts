@@ -14,6 +14,8 @@ export class BackupService {
         clientes: databaseService.getClientes(),
         ordens: databaseService.getOrdens(),
         itens: databaseService.getItens(),
+        servicosCatalogo: databaseService.getServicosCatalogo(),
+        pecasCatalogo: databaseService.getPecasCatalogo(),
       },
       empresa: databaseService.getDadosEmpresa(),
     };
@@ -59,7 +61,7 @@ export class BackupService {
         throw new Error('Formato do arquivo de backup inválido: seção de tabelas não encontrada.');
       }
 
-      const { clientes, ordens, itens } = backup.tabelas;
+      const { clientes, ordens, itens, servicosCatalogo, pecasCatalogo } = backup.tabelas;
 
       if (!Array.isArray(clientes) || !Array.isArray(ordens) || !Array.isArray(itens)) {
         throw new Error('Formato corrompido: listas de clientes, ordens ou itens inválidas.');
@@ -76,6 +78,18 @@ export class BackupService {
         // Encontra os itens da ordem
         const itensDaOrdem = itens.filter((i) => i.ordemId === ordem.id);
         databaseService.salvarOrdem(ordem, itensDaOrdem);
+      }
+
+      if (Array.isArray(servicosCatalogo)) {
+        for (const servico of servicosCatalogo) {
+          databaseService.salvarServicoCatalogo(servico);
+        }
+      }
+
+      if (Array.isArray(pecasCatalogo)) {
+        for (const peca of pecasCatalogo) {
+          databaseService.salvarPecaCatalogo(peca);
+        }
       }
 
       if (backup.empresa) {

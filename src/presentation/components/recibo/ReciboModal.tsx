@@ -1,13 +1,20 @@
 import React from 'react';
 import { useApp } from '../../../application/AppContext';
-import { formatarMoeda, formatarData, formatarTelefone } from '../../utils/formatters';
-import { X, Printer, Wrench, ShieldCheck, MessageCircle } from 'lucide-react';
+import {
+  formatarMoeda,
+  formatarData,
+  formatarTelefone,
+  formatarHorasExibicao,
+} from '../../utils/formatters';
+import { X, Printer, Wrench, ShieldCheck, MessageCircle, Edit2 } from 'lucide-react';
 import { abrirWhatsApp, gerarMensagemOrdemWhatsApp } from '../../utils/whatsapp';
 
 export const ReciboModal: React.FC = () => {
   const {
     ordemSelecionadaParaRecibo,
     setOrdemSelecionadaParaRecibo,
+    setOrdemParaEditar,
+    setIsOrdemModalOpen,
     clientes,
     itens,
     dadosEmpresa,
@@ -24,6 +31,13 @@ export const ReciboModal: React.FC = () => {
 
   const handleImprimir = () => {
     window.print();
+  };
+
+  const handleEditar = () => {
+    const ordem = ordemSelecionadaParaRecibo;
+    setOrdemSelecionadaParaRecibo(null);
+    setOrdemParaEditar(ordem);
+    setIsOrdemModalOpen(true);
   };
 
   const handleWhatsApp = () => {
@@ -58,6 +72,16 @@ export const ReciboModal: React.FC = () => {
             </span>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleEditar}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 active:scale-95 rounded-lg shadow-2xs transition-all"
+              title="Editar dados desta Ordem de Serviço"
+            >
+              <Edit2 className="w-4 h-4" />
+              <span className="hidden sm:inline">Editar OS</span>
+              <span className="sm:hidden">Editar</span>
+            </button>
             <button
               type="button"
               onClick={handleWhatsApp}
@@ -242,7 +266,7 @@ export const ReciboModal: React.FC = () => {
               <div className="flex justify-between py-0.5">
                 <span className="text-slate-600">Tempo Técnico Estimado:</span>
                 <span className="font-medium text-slate-900">
-                  {ordemSelecionadaParaRecibo.horasEstimadas} horas
+                  {formatarHorasExibicao(ordemSelecionadaParaRecibo.horasEstimadas)}
                 </span>
               </div>
               <div className="flex justify-between py-0.5">

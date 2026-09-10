@@ -6,6 +6,7 @@ import { KanbanBoard } from './presentation/components/kanban/KanbanBoard';
 import { ClientesList } from './presentation/components/clientes/ClientesList';
 import { EmpresaView } from './presentation/components/empresa/EmpresaView';
 import { RelatoriosView } from './presentation/components/relatorios/RelatoriosView';
+import { CatalogoView } from './presentation/components/catalogo/CatalogoView';
 import { ConfigView } from './presentation/components/config/ConfigView';
 import { ClienteModal } from './presentation/components/clientes/ClienteModal';
 import { OrdemModal } from './presentation/components/ordens/OrdemModal';
@@ -23,6 +24,7 @@ const AppContent: React.FC = () => {
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-24 md:pb-12">
         {abaAtiva === 'kanban' && <KanbanBoard />}
         {abaAtiva === 'clientes' && <ClientesList />}
+        {abaAtiva === 'catalogo' && <CatalogoView />}
         {abaAtiva === 'relatorios' && <RelatoriosView />}
         {abaAtiva === 'empresa' && <EmpresaView />}
         {abaAtiva === 'configuracoes' && <ConfigView />}

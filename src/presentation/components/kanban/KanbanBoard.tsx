@@ -64,9 +64,12 @@ const COLUNAS: ColunaConfig[] = [
   },
 ];
 
+type FiltroTempoConcluidas = '7d' | '30d' | 'todas';
+
 export const KanbanBoard: React.FC = () => {
   const { ordens, clientes, filtroTexto, setFiltroTexto } = useApp();
   const [colunaMobileAtiva, setColunaMobileAtiva] = useState<StatusOrdem | 'todas'>('todas');
+  const [filtroTempoConcluidas, setFiltroTempoConcluidas] = useState<FiltroTempoConcluidas>('7d');
 
   // Filtra as ordens de acordo com o campo de busca local do quadro
   const ordensFiltradas = useMemo(() => {
@@ -89,7 +92,11 @@ export const KanbanBoard: React.FC = () => {
     });
   }, [ordens, clientes, filtroTexto]);
 
-  // Agrupa ordens por status
+  const totalConcluidasGeral = useMemo(() => {
+    return ordensFiltradas.filter((o) => o.status === 'concluido').length;
+  }, [ordensFiltradas]);
+
+  // Agrupa ordens por status, aplicando filtro temporal seletivo para Concluídas
   const ordensPorStatus = useMemo(() => {
     const mapa: Record<StatusOrdem, OrdemServico[]> = {
       orcamento: [],
@@ -98,13 +105,25 @@ export const KanbanBoard: React.FC = () => {
       concluido: [],
       cancelado: [],
     };
+
+    const agora = new Date().getTime();
+
     ordensFiltradas.forEach((o) => {
+      if (o.status === 'concluido' && filtroTempoConcluidas !== 'todas') {
+        const dataReferencia = new Date(o.atualizadoEm || o.prazoEntrega || o.criadoEm).getTime();
+        const diasDiff = Math.floor((agora - dataReferencia) / (1000 * 60 * 60 * 24));
+        const limiteDias = filtroTempoConcluidas === '7d' ? 7 : 30;
+        if (diasDiff > limiteDias) {
+          return;
+        }
+      }
+
       if (mapa[o.status]) {
         mapa[o.status].push(o);
       }
     });
     return mapa;
-  }, [ordensFiltradas]);
+  }, [ordensFiltradas, filtroTempoConcluidas]);
 
   // Totais por coluna
   const totalPorStatus = useMemo(() => {
@@ -115,13 +134,14 @@ export const KanbanBoard: React.FC = () => {
       concluido: 0,
       cancelado: 0,
     };
-    ordensFiltradas.forEach((o) => {
-      if (totais[o.status] !== undefined) {
-        totais[o.status] += o.financeiro.valorFinal;
-      }
+    Object.entries(ordensPorStatus).forEach(([status, lista]) => {
+      totais[status as StatusOrdem] = lista.reduce(
+        (acc, o) => acc + (o.financeiro?.valorFinal || 0),
+        0
+      );
     });
     return totais;
-  }, [ordensFiltradas]);
+  }, [ordensPorStatus]);
 
   return (
     <div className="space-y-4 pb-20 md:pb-8">
@@ -209,7 +229,7 @@ export const KanbanBoard: React.FC = () => {
               className={`bg-slate-50/70 dark:bg-slate-900/60 rounded-2xl border-t-4 ${coluna.corBorda} border-x border-b border-slate-200 dark:border-slate-800 p-3.5 flex flex-col min-h-[300px] md:min-h-[600px] shadow-xs transition-colors duration-200`}
             >
               {/* Cabeçalho da Coluna */}
-              <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-200/80 dark:border-slate-800">
+              <div className="flex items-center justify-between pb-3 mb-2.5 border-b border-slate-200/80 dark:border-slate-800">
                 <div className="flex items-center gap-2">
                   <span className={`w-2.5 h-2.5 rounded-full ${coluna.corPonto}`} />
                   <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm">{coluna.titulo}</h3>
@@ -217,9 +237,50 @@ export const KanbanBoard: React.FC = () => {
                 <span
                   className={`text-xs font-bold px-2 py-0.5 rounded-full ${coluna.corBadge}`}
                 >
-                  {cards.length}
+                  {coluna.id === 'concluido' && cards.length !== totalConcluidasGeral
+                    ? `${cards.length}/${totalConcluidasGeral}`
+                    : cards.length}
                 </span>
               </div>
+
+              {/* Filtro Temporal Exclusivo da Coluna Concluído */}
+              {coluna.id === 'concluido' && (
+                <div className="grid grid-cols-3 gap-1 bg-slate-200/80 dark:bg-slate-800/80 p-0.5 rounded-lg mb-2.5 text-[11px] font-medium text-center">
+                  <button
+                    type="button"
+                    onClick={() => setFiltroTempoConcluidas('7d')}
+                    className={`py-1 rounded-md transition-all ${
+                      filtroTempoConcluidas === '7d'
+                        ? 'bg-white dark:bg-slate-700 text-emerald-700 dark:text-emerald-300 font-bold shadow-2xs'
+                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                    }`}
+                  >
+                    7 dias
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFiltroTempoConcluidas('30d')}
+                    className={`py-1 rounded-md transition-all ${
+                      filtroTempoConcluidas === '30d'
+                        ? 'bg-white dark:bg-slate-700 text-emerald-700 dark:text-emerald-300 font-bold shadow-2xs'
+                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                    }`}
+                  >
+                    30 dias
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFiltroTempoConcluidas('todas')}
+                    className={`py-1 rounded-md transition-all ${
+                      filtroTempoConcluidas === 'todas'
+                        ? 'bg-white dark:bg-slate-700 text-emerald-700 dark:text-emerald-300 font-bold shadow-2xs'
+                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                    }`}
+                  >
+                    Todas
+                  </button>
+                </div>
+              )}
 
               {/* Subtotal da Coluna */}
               <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-3 flex items-center justify-between px-1">

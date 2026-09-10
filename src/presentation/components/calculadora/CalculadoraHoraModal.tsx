@@ -2,7 +2,11 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../../../application/AppContext';
 import { PricingEngine } from '../../../domain/pricing';
 import { ParametrosHoraTecnica } from '../../../domain/types';
-import { formatarMoeda } from '../../utils/formatters';
+import {
+  formatarMoeda,
+  aplicarMascaraMoeda,
+  converterMoedaParaNumero,
+} from '../../utils/formatters';
 import {
   X,
   Calculator,
@@ -40,11 +44,11 @@ export const CalculadoraHoraModal: React.FC<CalculadoraHoraModalProps> = ({
     );
   }, [dadosEmpresa.parametrosHora]);
 
-  const [salarioDesejado, setSalarioDesejado] = useState<number | string>(
-    parametrosIniciais.salarioDesejado
+  const [salarioDesejado, setSalarioDesejado] = useState<string>(
+    aplicarMascaraMoeda(parametrosIniciais.salarioDesejado)
   );
-  const [custosFixosMensais, setCustosFixosMensais] = useState<number | string>(
-    parametrosIniciais.custosFixosMensais
+  const [custosFixosMensais, setCustosFixosMensais] = useState<string>(
+    aplicarMascaraMoeda(parametrosIniciais.custosFixosMensais)
   );
   const [diasPorSemana, setDiasPorSemana] = useState<number>(parametrosIniciais.diasPorSemana);
   const [horasPorDia, setHorasPorDia] = useState<number | string>(parametrosIniciais.horasPorDia);
@@ -56,8 +60,8 @@ export const CalculadoraHoraModal: React.FC<CalculadoraHoraModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      setSalarioDesejado(parametrosIniciais.salarioDesejado);
-      setCustosFixosMensais(parametrosIniciais.custosFixosMensais);
+      setSalarioDesejado(aplicarMascaraMoeda(parametrosIniciais.salarioDesejado));
+      setCustosFixosMensais(aplicarMascaraMoeda(parametrosIniciais.custosFixosMensais));
       setDiasPorSemana(parametrosIniciais.diasPorSemana);
       setHorasPorDia(parametrosIniciais.horasPorDia);
       setMargemOciosidadePercentual(parametrosIniciais.margemOciosidadePercentual);
@@ -68,8 +72,8 @@ export const CalculadoraHoraModal: React.FC<CalculadoraHoraModalProps> = ({
   const resultado = useMemo(() => {
     try {
       return PricingEngine.calcularHoraTecnica({
-        salarioDesejado: Math.max(0, Number(salarioDesejado) || 0),
-        custosFixosMensais: Math.max(0, Number(custosFixosMensais) || 0),
+        salarioDesejado: converterMoedaParaNumero(salarioDesejado),
+        custosFixosMensais: converterMoedaParaNumero(custosFixosMensais),
         diasPorSemana: Math.min(7, Math.max(1, Number(diasPorSemana) || 5)),
         horasPorDia: Math.min(24, Math.max(1, Number(horasPorDia) || 8)),
         margemOciosidadePercentual: Math.min(95, Math.max(0, Number(margemOciosidadePercentual) || 0)),
@@ -88,8 +92,8 @@ export const CalculadoraHoraModal: React.FC<CalculadoraHoraModalProps> = ({
 
   const handleSalvarComoPadrao = () => {
     const novosParametros: ParametrosHoraTecnica = {
-      salarioDesejado: Number(salarioDesejado) || 0,
-      custosFixosMensais: Number(custosFixosMensais) || 0,
+      salarioDesejado: converterMoedaParaNumero(salarioDesejado),
+      custosFixosMensais: converterMoedaParaNumero(custosFixosMensais),
       diasPorSemana: Number(diasPorSemana) || 5,
       horasPorDia: Number(horasPorDia) || 8,
       margemOciosidadePercentual: Number(margemOciosidadePercentual) || 0,
@@ -161,11 +165,11 @@ export const CalculadoraHoraModal: React.FC<CalculadoraHoraModalProps> = ({
                     R$
                   </span>
                   <input
-                    type="number"
-                    min="0"
-                    step="50"
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="0,00"
                     value={salarioDesejado}
-                    onChange={(e) => setSalarioDesejado(e.target.value)}
+                    onChange={(e) => setSalarioDesejado(aplicarMascaraMoeda(e.target.value))}
                     className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-hidden bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
                   />
                 </div>
@@ -183,11 +187,11 @@ export const CalculadoraHoraModal: React.FC<CalculadoraHoraModalProps> = ({
                     R$
                   </span>
                   <input
-                    type="number"
-                    min="0"
-                    step="25"
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="0,00"
                     value={custosFixosMensais}
-                    onChange={(e) => setCustosFixosMensais(e.target.value)}
+                    onChange={(e) => setCustosFixosMensais(aplicarMascaraMoeda(e.target.value))}
                     className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-hidden bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
                   />
                 </div>
@@ -320,7 +324,7 @@ export const CalculadoraHoraModal: React.FC<CalculadoraHoraModalProps> = ({
               <TrendingUp className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
               <p className="leading-relaxed">
                 Cobrar no mínimo <strong>{formatarMoeda(resultado.valorHoraRecomendado)} por hora</strong> garante que você atinja sua meta salarial de{' '}
-                <strong>{formatarMoeda(Number(salarioDesejado) || 0)}</strong> cobrindo todos os custos operacionais, mesmo perdendo {margemOciosidadePercentual}% do tempo em trânsito e orçamentos.
+                <strong>{formatarMoeda(converterMoedaParaNumero(salarioDesejado))}</strong> cobrindo todos os custos operacionais, mesmo perdendo {margemOciosidadePercentual}% do tempo em trânsito e orçamentos.
               </p>
             </div>
           </div>

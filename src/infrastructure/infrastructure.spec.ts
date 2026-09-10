@@ -3,7 +3,7 @@ import { LocalStorageRepository } from './LocalStorageRepository';
 import { databaseService } from './databaseService';
 import { inicializarDadosDemonstrativos } from './seed';
 import { backupService } from './backupService';
-import { Cliente, OrdemServico, ItemServico } from '../domain/types';
+import { Cliente, OrdemServico, ItemServico, ServicoCatalogo, PecaCatalogo } from '../domain/types';
 
 // Mock de Storage para execução consistente em ambiente Vitest / Node
 class MockStorage implements Storage {
@@ -246,9 +246,9 @@ describe('Camada de Infraestrutura e Persistência Local', () => {
       const ordens = databaseService.getOrdens();
       const itens = databaseService.getItens();
 
-      expect(clientes).toHaveLength(3);
-      expect(ordens).toHaveLength(5);
-      expect(itens.length).toBeGreaterThanOrEqual(4);
+      expect(clientes).toHaveLength(10);
+      expect(ordens).toHaveLength(22);
+      expect(itens.length).toBeGreaterThanOrEqual(15);
 
       // Verifica se todos os 5 status estão presentes
       const statusPresentes = ordens.map((o) => o.status);
@@ -263,7 +263,7 @@ describe('Camada de Infraestrutura e Persistência Local', () => {
       inicializarDadosDemonstrativos();
       const reexecutou = inicializarDadosDemonstrativos();
       expect(reexecutou).toBe(false);
-      expect(databaseService.getClientes()).toHaveLength(3);
+      expect(databaseService.getClientes()).toHaveLength(10);
     });
   });
 
@@ -272,8 +272,8 @@ describe('Camada de Infraestrutura e Persistência Local', () => {
       inicializarDadosDemonstrativos();
 
       const backup = backupService.exportarBackupCompleto();
-      expect(backup.tabelas.clientes).toHaveLength(3);
-      expect(backup.tabelas.ordens).toHaveLength(5);
+      expect(backup.tabelas.clientes).toHaveLength(10);
+      expect(backup.tabelas.ordens).toHaveLength(22);
 
       // Limpa a base
       databaseService.limparBanco();
@@ -283,9 +283,9 @@ describe('Camada de Infraestrutura e Persistência Local', () => {
       // Restaura o backup
       const sucesso = backupService.importarBackup(JSON.stringify(backup));
       expect(sucesso).toBe(true);
-      expect(databaseService.getClientes()).toHaveLength(3);
-      expect(databaseService.getOrdens()).toHaveLength(5);
-      expect(databaseService.getItens().length).toBeGreaterThanOrEqual(4);
+      expect(databaseService.getClientes()).toHaveLength(10);
+      expect(databaseService.getOrdens()).toHaveLength(22);
+      expect(databaseService.getItens().length).toBeGreaterThanOrEqual(15);
     });
 
     it('deve rejeitar e lançar erro para arquivos de backup corrompidos ou malformatados', () => {
@@ -340,6 +340,98 @@ describe('Camada de Infraestrutura e Persistência Local', () => {
       backupService.importarBackup(JSON.stringify(backup));
       expect(databaseService.getDadosEmpresa().nome).toBe('Alfa Refrigeração');
       expect(databaseService.getDadosEmpresa().funcao).toBe('Manutenção de Ar-Condicionado e Câmaras Frias');
+    });
+  });
+
+  describe('Catálogo de Serviços e Peças/Materiais', () => {
+    it('deve realizar operações completas de CRUD em Serviços do Catálogo', () => {
+      const servico: ServicoCatalogo = {
+        id: 's-teste-1',
+        nome: 'Limpeza de Bico Injetor',
+        descricao: 'Equalização e teste ultrassônico',
+        horasEstimadas: 1.5,
+        valorSugerido: 120,
+        criadoEm: '2026-03-01T10:00:00.000Z',
+      };
+
+      databaseService.salvarServicoCatalogo(servico);
+      expect(databaseService.getServicosCatalogo()).toHaveLength(1);
+      expect(databaseService.getServicoCatalogoById('s-teste-1')?.nome).toBe('Limpeza de Bico Injetor');
+
+      // Atualização
+      databaseService.salvarServicoCatalogo({
+        ...servico,
+        valorSugerido: 140,
+      });
+      expect(databaseService.getServicoCatalogoById('s-teste-1')?.valorSugerido).toBe(140);
+
+      // Exclusão
+      databaseService.excluirServicoCatalogo('s-teste-1');
+      expect(databaseService.getServicosCatalogo()).toHaveLength(0);
+      expect(databaseService.getServicoCatalogoById('s-teste-1')).toBeUndefined();
+    });
+
+    it('deve realizar operações completas de CRUD em Peças do Catálogo', () => {
+      const peca: PecaCatalogo = {
+        id: 'p-teste-1',
+        nome: 'Vela de Ignição Iridium',
+        codigo: 'VEL-01',
+        unidade: 'un',
+        precoCusto: 35.0,
+        precoVenda: 70.0,
+        criadoEm: '2026-03-01T10:00:00.000Z',
+      };
+
+      databaseService.salvarPecaCatalogo(peca);
+      expect(databaseService.getPecasCatalogo()).toHaveLength(1);
+      expect(databaseService.getPecaCatalogoById('p-teste-1')?.nome).toBe('Vela de Ignição Iridium');
+
+      // Atualização
+      databaseService.salvarPecaCatalogo({
+        ...peca,
+        precoVenda: 80.0,
+      });
+      expect(databaseService.getPecaCatalogoById('p-teste-1')?.precoVenda).toBe(80.0);
+
+      // Exclusão
+      databaseService.excluirPecaCatalogo('p-teste-1');
+      expect(databaseService.getPecasCatalogo()).toHaveLength(0);
+      expect(databaseService.getPecaCatalogoById('p-teste-1')).toBeUndefined();
+    });
+
+    it('deve incluir o catálogo no backup e restaurar corretamente', () => {
+      const servico: ServicoCatalogo = {
+        id: 's-bkp-1',
+        nome: 'Troca de Correia Dentada',
+        horasEstimadas: 3,
+        valorSugerido: 250,
+        criadoEm: '2026-03-01T10:00:00.000Z',
+      };
+      const peca: PecaCatalogo = {
+        id: 'p-bkp-1',
+        nome: 'Kit Correia Dentada Gates',
+        unidade: 'un',
+        precoCusto: 180,
+        precoVenda: 280,
+        criadoEm: '2026-03-01T10:00:00.000Z',
+      };
+
+      databaseService.salvarServicoCatalogo(servico);
+      databaseService.salvarPecaCatalogo(peca);
+
+      const backup = backupService.exportarBackupCompleto();
+      expect(backup.tabelas.servicosCatalogo).toHaveLength(1);
+      expect(backup.tabelas.pecasCatalogo).toHaveLength(1);
+
+      databaseService.limparBanco();
+      expect(databaseService.getServicosCatalogo()).toHaveLength(0);
+      expect(databaseService.getPecasCatalogo()).toHaveLength(0);
+
+      backupService.importarBackup(JSON.stringify(backup));
+      expect(databaseService.getServicosCatalogo()).toHaveLength(1);
+      expect(databaseService.getServicosCatalogo()[0].nome).toBe('Troca de Correia Dentada');
+      expect(databaseService.getPecasCatalogo()).toHaveLength(1);
+      expect(databaseService.getPecasCatalogo()[0].nome).toBe('Kit Correia Dentada Gates');
     });
   });
 });

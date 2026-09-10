@@ -2,6 +2,13 @@ import { describe, it, expect } from 'vitest';
 import {
   aplicarMascaraTelefone,
   aplicarMascaraDocumento,
+  aplicarMascaraMoeda,
+  converterMoedaParaNumero,
+  aplicarMascaraHora,
+  normalizarHoraInput,
+  converterHoraParaDecimal,
+  formatarHorasParaInput,
+  formatarHorasExibicao,
   formatarMoeda,
   formatarData,
   avaliarPrazo,
@@ -63,6 +70,104 @@ describe('Formatadores e Máscaras de Entrada', () => {
 
     it('deve limitar a 14 dígitos numéricos', () => {
       expect(aplicarMascaraDocumento('123456780001909999')).toBe('12.345.678/0001-90');
+    });
+  });
+
+  describe('aplicarMascaraMoeda e converterMoedaParaNumero', () => {
+    it('deve retornar string vazia para entrada vazia ou nula', () => {
+      expect(aplicarMascaraMoeda('')).toBe('');
+      expect(converterMoedaParaNumero('')).toBe(0);
+    });
+
+    it('deve formatar número já existente para formato BRL de input', () => {
+      expect(aplicarMascaraMoeda(65)).toBe('65,00');
+      expect(aplicarMascaraMoeda(80.5)).toBe('80,50');
+      expect(aplicarMascaraMoeda(0)).toBe('0,00');
+    });
+
+    it('deve formatar progressivamente no estilo ATM (deslocamento de centavos)', () => {
+      expect(aplicarMascaraMoeda('1')).toBe('0,01');
+      expect(aplicarMascaraMoeda('10')).toBe('0,10');
+      expect(aplicarMascaraMoeda('100')).toBe('1,00');
+      expect(aplicarMascaraMoeda('1500')).toBe('15,00');
+      expect(aplicarMascaraMoeda('150000')).toBe('1.500,00');
+    });
+
+    it('deve respeitar o limite máximo de 8 dígitos (R$ 999.999,99)', () => {
+      expect(aplicarMascaraMoeda('99999999')).toBe('999.999,99');
+      expect(aplicarMascaraMoeda('999999999')).toBe('999.999,99');
+    });
+
+    it('deve permitir limpar o campo ao apagar até zerar', () => {
+      expect(aplicarMascaraMoeda('0')).toBe('');
+      expect(aplicarMascaraMoeda('00')).toBe('');
+    });
+
+    it('deve converter strings formatadas em números decimais com precisão', () => {
+      expect(converterMoedaParaNumero('1.250,50')).toBe(1250.5);
+      expect(converterMoedaParaNumero('60,00')).toBe(60);
+      expect(converterMoedaParaNumero('0,05')).toBe(0.05);
+      expect(converterMoedaParaNumero(85.5)).toBe(85.5);
+    });
+  });
+
+  describe('aplicarMascaraHora, normalizarHoraInput e conversores', () => {
+    it('deve retornar vazio para entradas vazias', () => {
+      expect(aplicarMascaraHora('')).toBe('');
+      expect(normalizarHoraInput('')).toBe('');
+      expect(converterHoraParaDecimal('')).toBe(0);
+      expect(formatarHorasParaInput('')).toBe('');
+    });
+
+    it('deve formatar digitação progressiva com dois-pontos', () => {
+      expect(aplicarMascaraHora('4')).toBe('4');
+      expect(aplicarMascaraHora('4:')).toBe('04:');
+      expect(aplicarMascaraHora('04:2')).toBe('04:2');
+      expect(aplicarMascaraHora('04:25')).toBe('04:25');
+    });
+
+    it('deve aceitar ponto ou vírgula como separador de horas e minutos', () => {
+      expect(aplicarMascaraHora('4.25')).toBe('04:25');
+      expect(aplicarMascaraHora('4,30')).toBe('04:30');
+    });
+
+    it('deve limitar os minutos no máximo a 59', () => {
+      expect(aplicarMascaraHora('04:88')).toBe('04:59');
+    });
+
+    it('deve normalizar horas ao sair do campo (onBlur)', () => {
+      expect(normalizarHoraInput('4')).toBe('04:00');
+      expect(normalizarHoraInput('4:')).toBe('04:00');
+      expect(normalizarHoraInput('4:2')).toBe('04:20');
+      expect(normalizarHoraInput('4:25')).toBe('04:25');
+    });
+
+    it('deve converter formato HH:mm para horas decimais com precisão', () => {
+      expect(converterHoraParaDecimal('04:25')).toBe(4.4167);
+      expect(converterHoraParaDecimal('01:30')).toBe(1.5);
+      expect(converterHoraParaDecimal('02:00')).toBe(2);
+      expect(converterHoraParaDecimal('00:45')).toBe(0.75);
+      expect(converterHoraParaDecimal('2')).toBe(2);
+    });
+
+    it('deve formatar horas decimais para input HH:mm', () => {
+      expect(formatarHorasParaInput(4.4167)).toBe('04:25');
+      expect(formatarHorasParaInput(1.5)).toBe('01:30');
+      expect(formatarHorasParaInput(2)).toBe('02:00');
+      expect(formatarHorasParaInput(0.75)).toBe('00:45');
+      expect(formatarHorasParaInput(0)).toBe('00:00');
+    });
+
+    it('deve formatar horas para exibição amigável (ex: 4h 25min, 2h, 45min)', () => {
+      expect(formatarHorasExibicao(4.4167)).toBe('4h 25min');
+      expect(formatarHorasExibicao('04:25')).toBe('4h 25min');
+      expect(formatarHorasExibicao(1.5)).toBe('1h 30min');
+      expect(formatarHorasExibicao('01:30')).toBe('1h 30min');
+      expect(formatarHorasExibicao(2)).toBe('2h');
+      expect(formatarHorasExibicao(0.75)).toBe('45min');
+      expect(formatarHorasExibicao('00:45')).toBe('45min');
+      expect(formatarHorasExibicao(0)).toBe('0h');
+      expect(formatarHorasExibicao('')).toBe('0h');
     });
   });
 

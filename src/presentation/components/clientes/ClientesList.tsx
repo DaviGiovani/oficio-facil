@@ -16,6 +16,7 @@ import {
   MessageCircle,
 } from 'lucide-react';
 import { abrirWhatsApp } from '../../utils/whatsapp';
+import { ClienteDetalhesModal } from './ClienteDetalhesModal';
 
 export const ClientesList: React.FC = () => {
   const {
@@ -30,6 +31,7 @@ export const ClientesList: React.FC = () => {
 
   const [busca, setBusca] = useState('');
   const [alertaErro, setAlertaErro] = useState<string | null>(null);
+  const [clienteParaVisualizar, setClienteParaVisualizar] = useState<Cliente | null>(null);
 
   // Mapeia quantidade de OS por cliente
   const contagemOrdensPorCliente = useMemo(() => {
@@ -159,11 +161,12 @@ export const ClientesList: React.FC = () => {
             return (
               <div
                 key={cliente.id}
-                className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5 shadow-xs hover:shadow-md transition-shadow flex flex-col justify-between"
+                onClick={() => setClienteParaVisualizar(cliente)}
+                className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5 shadow-xs hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-600 transition-all flex flex-col justify-between cursor-pointer group"
               >
                 <div>
                   <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-bold text-slate-900 dark:text-white text-base leading-snug">
+                    <h3 className="font-bold text-slate-900 dark:text-white text-base leading-snug group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                       {cliente.nome}
                     </h3>
                     <span className="flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-900/80 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 shrink-0">
@@ -198,7 +201,10 @@ export const ClientesList: React.FC = () => {
                   {cliente.telefone && (
                     <button
                       type="button"
-                      onClick={() => handleWhatsApp(cliente)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleWhatsApp(cliente);
+                      }}
                       title={`Conversar com ${cliente.nome} no WhatsApp`}
                       className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-md transition-colors"
                     >
@@ -209,7 +215,10 @@ export const ClientesList: React.FC = () => {
 
                   <button
                     type="button"
-                    onClick={() => handleEditar(cliente)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEditar(cliente);
+                    }}
                     className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-md transition-colors"
                   >
                     <Edit2 className="w-3.5 h-3.5" />
@@ -218,7 +227,10 @@ export const ClientesList: React.FC = () => {
 
                   <button
                     type="button"
-                    onClick={() => handleExcluir(cliente)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleExcluir(cliente);
+                    }}
                     title={
                       totalOrdens > 0
                         ? 'Cliente possui OSs vinculadas. Exclusão bloqueada.'
@@ -235,6 +247,16 @@ export const ClientesList: React.FC = () => {
           })}
         </div>
       )}
+
+      {/* Modal de Visualização Detalhada do Cliente */}
+      <ClienteDetalhesModal
+        cliente={clienteParaVisualizar}
+        onClose={() => setClienteParaVisualizar(null)}
+        onEditar={(c) => {
+          setClienteParaVisualizar(null);
+          handleEditar(c);
+        }}
+      />
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import { Cliente, OrdemServico, ItemServico, StatusOrdem, DadosEmpresa } from '../domain/types';
+import { Cliente, OrdemServico, ItemServico, StatusOrdem, DadosEmpresa, ServicoCatalogo, PecaCatalogo } from '../domain/types';
 import { LocalStorageRepository } from './LocalStorageRepository';
 
 export const DADOS_EMPRESA_PADRAO: DadosEmpresa = {
@@ -23,6 +23,8 @@ export class DatabaseService {
   private clientesRepo = new LocalStorageRepository<Cliente>('clientes');
   private ordensRepo = new LocalStorageRepository<OrdemServico>('ordens');
   private itensRepo = new LocalStorageRepository<ItemServico>('itens');
+  private servicosCatalogoRepo = new LocalStorageRepository<ServicoCatalogo>('catalogo_servicos');
+  private pecasCatalogoRepo = new LocalStorageRepository<PecaCatalogo>('catalogo_pecas');
   private readonly empresaKey = '@oficio_facil:empresa';
 
   // --- Dados da Empresa / Prestador ---
@@ -157,11 +159,57 @@ export class DatabaseService {
     this.itensRepo.delete(id);
   }
 
+  // --- Catálogo: Serviços ---
+  public getServicosCatalogo(): ServicoCatalogo[] {
+    return this.servicosCatalogoRepo.getAll();
+  }
+
+  public getServicoCatalogoById(id: string): ServicoCatalogo | undefined {
+    return this.servicosCatalogoRepo.getById(id);
+  }
+
+  public salvarServicoCatalogo(servico: ServicoCatalogo): void {
+    const existente = this.servicosCatalogoRepo.getById(servico.id);
+    if (existente) {
+      this.servicosCatalogoRepo.update(servico.id, servico);
+    } else {
+      this.servicosCatalogoRepo.insert(servico);
+    }
+  }
+
+  public excluirServicoCatalogo(id: string): void {
+    this.servicosCatalogoRepo.delete(id);
+  }
+
+  // --- Catálogo: Peças e Materiais ---
+  public getPecasCatalogo(): PecaCatalogo[] {
+    return this.pecasCatalogoRepo.getAll();
+  }
+
+  public getPecaCatalogoById(id: string): PecaCatalogo | undefined {
+    return this.pecasCatalogoRepo.getById(id);
+  }
+
+  public salvarPecaCatalogo(peca: PecaCatalogo): void {
+    const existente = this.pecasCatalogoRepo.getById(peca.id);
+    if (existente) {
+      this.pecasCatalogoRepo.update(peca.id, peca);
+    } else {
+      this.pecasCatalogoRepo.insert(peca);
+    }
+  }
+
+  public excluirPecaCatalogo(id: string): void {
+    this.pecasCatalogoRepo.delete(id);
+  }
+
   // --- Reset da base ---
   public limparBanco(): void {
     this.clientesRepo.clear();
     this.ordensRepo.clear();
     this.itensRepo.clear();
+    this.servicosCatalogoRepo.clear();
+    this.pecasCatalogoRepo.clear();
     const storage = typeof window !== 'undefined' ? window.localStorage : globalThis.localStorage;
     if (storage) {
       storage.removeItem(this.empresaKey);
