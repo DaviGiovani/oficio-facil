@@ -206,18 +206,3 @@ O **OfícioFácil** é totalmente responsivo e otimizado para dispositivos móve
 - Pode ser adicionado à tela inicial do celular através do menu do navegador (*"Adicionar à tela de início"*), comportando-se como um aplicativo nativo.
 
 ---
-
-## 🎓 7. Contexto Acadêmico
-
-- **Instituição:** Centro Universitário Filadélfia (UniFil)
-- **Curso:** Bacharelado em Engenharia de Software (EaD)
-- **Disciplinas Envolvidas:** Extensão VII – Testes e Refinamento | Extensão VIII – Publicação e Divulgação
-- **Aluno:** Davi Giovani
-- **Objetivo Social:** Democratização de ferramentas digitais de gestão operacional e financeira para trabalhadores autônomos e microempreendedores individuais (MEIs), promovendo inclusão produtiva, soberania de dados e precificação justa.
-- **Tecnologias e Conceitos:** Engenharia de Software, Arquitetura em Camadas (Clean Architecture), PWA / Jamstack (Client-Side), Testes Automatizados (Vitest) e Princípios Contábeis/Financeiros (DRE e Formação de Preço de Venda).
-
----
-
-## 📄 8. Licença
-
-Este projeto está licenciado sob a licença **MIT** — consulte o arquivo [LICENSE](LICENSE) para obter mais detalhes. Livre para fins acadêmicos, de estudo e utilização comercial por microempreendedores.
